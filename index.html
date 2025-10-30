@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Торговая Панель Фьючерсов</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Заголовок -->
+        <header class="header">
+            <h1>📈 Торговая Панель Фьючерсов</h1>
+            <div class="header-info">
+                <span id="connection-status" class="status-disconnected">● Отключено</span>
+                <span id="current-time"></span>
+            </div>
+        </header>
+
+        <!-- Основная панель -->
+        <div class="main-panel">
+            <!-- Боковая панель с инструментами -->
+            <aside class="sidebar">
+                <h2>Инструменты</h2>
+                <div class="instrument-list">
+                    <div class="instrument-item active" data-symbol="BTCUSDT">
+                        <div class="instrument-name">BTC/USDT</div>
+                        <div class="instrument-price" id="price-BTCUSDT">--</div>
+                        <div class="instrument-change" id="change-BTCUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="ETHUSDT">
+                        <div class="instrument-name">ETH/USDT</div>
+                        <div class="instrument-price" id="price-ETHUSDT">--</div>
+                        <div class="instrument-change" id="change-ETHUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="BNBUSDT">
+                        <div class="instrument-name">BNB/USDT</div>
+                        <div class="instrument-price" id="price-BNBUSDT">--</div>
+                        <div class="instrument-change" id="change-BNBUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="SOLUSDT">
+                        <div class="instrument-name">SOL/USDT</div>
+                        <div class="instrument-price" id="price-SOLUSDT">--</div>
+                        <div class="instrument-change" id="change-SOLUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="ADAUSDT">
+                        <div class="instrument-name">ADA/USDT</div>
+                        <div class="instrument-price" id="price-ADAUSDT">--</div>
+                        <div class="instrument-change" id="change-ADAUSDT">--%</div>
+                    </div>
+                </div>
+
+                <h3>Таймфрейм</h3>
+                <div class="timeframe-selector">
+                    <button class="tf-btn" data-interval="1m">1м</button>
+                    <button class="tf-btn" data-interval="5m">5м</button>
+                    <button class="tf-btn active" data-interval="15m">15м</button>
+                    <button class="tf-btn" data-interval="1h">1ч</button>
+                    <button class="tf-btn" data-interval="4h">4ч</button>
+                    <button class="tf-btn" data-interval="1d">1д</button>
+                </div>
+            </aside>
+
+            <!-- Основная область -->
+            <main class="main-content">
+                <!-- Информация о выбранном инструменте -->
+                <div class="instrument-info">
+                    <div class="info-item">
+                        <span class="info-label">Инструмент:</span>
+                        <span class="info-value" id="current-symbol">BTC/USDT</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Цена:</span>
+                        <span class="info-value large" id="current-price">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Изменение 24ч:</span>
+                        <span class="info-value" id="current-change">--%</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Объем 24ч:</span>
+                        <span class="info-value" id="current-volume">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Макс 24ч:</span>
+                        <span class="info-value" id="current-high">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Мин 24ч:</span>
+                        <span class="info-value" id="current-low">--</span>
+                    </div>
+                </div>
+
+                <!-- График -->
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+
+                <!-- Торговая панель -->
+                <div class="trading-panel">
+                    <div class="order-book">
+                        <h3>Стакан заказов</h3>
+                        <div class="orderbook-container">
+                            <div class="orderbook-header">
+                                <span>Цена</span>
+                                <span>Количество</span>
+                                <span>Сумма</span>
+                            </div>
+                            <div id="orderbook-asks" class="orderbook-asks"></div>
+                            <div class="orderbook-spread">
+                                <span id="spread-value">--</span>
+                            </div>
+                            <div id="orderbook-bids" class="orderbook-bids"></div>
+                        </div>
+                    </div>
+
+                    <div class="recent-trades">
+                        <h3>Последние сделки</h3>
+                        <div id="trades-container" class="trades-container"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>Данные предоставлены Binance Futures API | Обновление в реальном времени</p>
+        </footer>
+    </div>
+
+    <script src="js/trading.js"></script>
+</body>
+</html>
