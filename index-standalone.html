@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Торговая Панель Фьючерсов</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+        }
+
+        .status-connected { color: #4caf50; font-weight: 500; }
+        .status-disconnected { color: #f44336; font-weight: 500; }
+
+        .main-panel {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar h2, .sidebar h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .instrument-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .instrument-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .instrument-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .instrument-item.active {
+            background: rgba(33, 150, 243, 0.2);
+            border-color: #2196f3;
+        }
+
+        .instrument-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .instrument-price {
+            font-size: 13px;
+            color: #90caf9;
+        }
+
+        .instrument-change {
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .instrument-change.positive { color: #4caf50; }
+        .instrument-change.negative { color: #f44336; }
+
+        .timeframe-selector {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+        }
+
+        .tf-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .tf-btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .tf-btn.active {
+            background: #2196f3;
+            border-color: #2196f3;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .main-content {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .instrument-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: #9e9e9e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .info-value.large {
+            font-size: 20px;
+            color: #2196f3;
+        }
+
+        .info-value.positive { color: #4caf50; }
+        .info-value.negative { color: #f44336; }
+
+        .chart-container {
+            height: 300px;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .trading-panel {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .order-book, .recent-trades {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .order-book h3, .recent-trades h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .orderbook-container {
+            font-size: 11px;
+        }
+
+        .orderbook-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 6px;
+            font-weight: 600;
+            color: #9e9e9e;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .orderbook-asks, .orderbook-bids {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .orderbook-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 4px 6px;
+        }
+
+        .orderbook-row.ask { color: #f44336; }
+        .orderbook-row.bid { color: #4caf50; }
+
+        .orderbook-spread {
+            text-align: center;
+            padding: 8px;
+            font-weight: 600;
+            color: #2196f3;
+            background: rgba(33, 150, 243, 0.1);
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+
+        .trades-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .trade-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 4px 6px;
+            font-size: 11px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .trade-row.buy { color: #4caf50; }
+        .trade-row.sell { color: #f44336; }
+        .trade-time { color: #9e9e9e; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 12px 20px;
+            text-align: center;
+            color: #9e9e9e;
+            font-size: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (min-width: 768px) {
+            .main-panel { grid-template-columns: 280px 1fr; }
+            .instrument-list { grid-template-columns: 1fr; }
+            .chart-container { height: 400px; }
+            .trading-panel { grid-template-columns: 1fr 1fr; }
+            .header h1 { font-size: 24px; }
+        }
+
+        @media (min-width: 1024px) {
+            .chart-container { height: 500px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📈 Торговая Панель</h1>
+            <div class="header-info">
+                <span id="connection-status" class="status-disconnected">● Отключено</span>
+                <span id="current-time"></span>
+            </div>
+        </header>
+
+        <div class="main-panel">
+            <aside class="sidebar">
+                <h2>Инструменты</h2>
+                <div class="instrument-list">
+                    <div class="instrument-item active" data-symbol="BTCUSDT">
+                        <div class="instrument-name">BTC/USDT</div>
+                        <div class="instrument-price" id="price-BTCUSDT">--</div>
+                        <div class="instrument-change" id="change-BTCUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="ETHUSDT">
+                        <div class="instrument-name">ETH/USDT</div>
+                        <div class="instrument-price" id="price-ETHUSDT">--</div>
+                        <div class="instrument-change" id="change-ETHUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="BNBUSDT">
+                        <div class="instrument-name">BNB/USDT</div>
+                        <div class="instrument-price" id="price-BNBUSDT">--</div>
+                        <div class="instrument-change" id="change-BNBUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="SOLUSDT">
+                        <div class="instrument-name">SOL/USDT</div>
+                        <div class="instrument-price" id="price-SOLUSDT">--</div>
+                        <div class="instrument-change" id="change-SOLUSDT">--%</div>
+                    </div>
+                    <div class="instrument-item" data-symbol="ADAUSDT">
+                        <div class="instrument-name">ADA/USDT</div>
+                        <div class="instrument-price" id="price-ADAUSDT">--</div>
+                        <div class="instrument-change" id="change-ADAUSDT">--%</div>
+                    </div>
+                </div>
+
+                <h3>Таймфрейм</h3>
+                <div class="timeframe-selector">
+                    <button class="tf-btn" data-interval="1m">1м</button>
+                    <button class="tf-btn" data-interval="5m">5м</button>
+                    <button class="tf-btn active" data-interval="15m">15м</button>
+                    <button class="tf-btn" data-interval="1h">1ч</button>
+                    <button class="tf-btn" data-interval="4h">4ч</button>
+                    <button class="tf-btn" data-interval="1d">1д</button>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <div class="instrument-info">
+                    <div class="info-item">
+                        <span class="info-label">Инструмент:</span>
+                        <span class="info-value" id="current-symbol">BTC/USDT</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Цена:</span>
+                        <span class="info-value large" id="current-price">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Изменение 24ч:</span>
+                        <span class="info-value" id="current-change">--%</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Объем 24ч:</span>
+                        <span class="info-value" id="current-volume">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Макс 24ч:</span>
+                        <span class="info-value" id="current-high">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Мин 24ч:</span>
+                        <span class="info-value" id="current-low">--</span>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+
+                <div class="trading-panel">
+                    <div class="order-book">
+                        <h3>Стакан заказов</h3>
+                        <div class="orderbook-container">
+                            <div class="orderbook-header">
+                                <span>Цена</span>
+                                <span>Количество</span>
+                                <span>Сумма</span>
+                            </div>
+                            <div id="orderbook-asks" class="orderbook-asks"></div>
+                            <div class="orderbook-spread">
+                                <span id="spread-value">--</span>
+                            </div>
+                            <div id="orderbook-bids" class="orderbook-bids"></div>
+                        </div>
+                    </div>
+
+                    <div class="recent-trades">
+                        <h3>Последние сделки</h3>
+                        <div id="trades-container" class="trades-container"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer class="footer">
+            <p>Данные: Binance Futures API | Обновление в реальном времени</p>
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = 'https://fapi.binance.com';
+        let currentSymbol = 'BTCUSDT';
+        let currentInterval = '15m';
+        let priceChart = null;
+        let websocket = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            initializeEventListeners();
+            loadInitialData();
+            startWebSocket();
+            updateTime();
+            setInterval(updateTime, 1000);
+        });
+
+        function initializeChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Цена',
+                        data: [],
+                        borderColor: '#2196f3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#e0e0e0', font: { size: 12 } }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#e0e0e0',
+                            borderColor: '#2196f3',
+                            borderWidth: 1,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                displayFormats: { minute: 'HH:mm', hour: 'HH:mm' }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9e9e9e' }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9e9e9e' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeEventListeners() {
+            document.querySelectorAll('.instrument-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.instrument-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    currentSymbol = this.dataset.symbol;
+                    loadInitialData();
+                    restartWebSocket();
+                });
+            });
+
+            document.querySelectorAll('.tf-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentInterval = this.dataset.interval;
+                    loadChartData();
+                });
+            });
+        }
+
+        async function loadInitialData() {
+            try {
+                await Promise.all([loadTicker(), loadChartData(), loadOrderBook(), loadRecentTrades()]);
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        }
+
+        async function loadTicker() {
+            try {
+                const response = await fetch(`${API_BASE}/fapi/v1/ticker/24hr?symbol=${currentSymbol}`);
+                const data = await response.json();
+                updateTickerDisplay(data);
+                updateInstrumentList(data);
+            } catch (error) {
+                console.error('Ошибка тикера:', error);
+            }
+        }
+
+        function updateTickerDisplay(data) {
+            const price = parseFloat(data.lastPrice);
+            const change = parseFloat(data.priceChangePercent);
+            const volume = parseFloat(data.volume);
+            const high = parseFloat(data.highPrice);
+            const low = parseFloat(data.lowPrice);
+
+            document.getElementById('current-symbol').textContent = currentSymbol.replace('USDT', '/USDT');
+            document.getElementById('current-price').textContent = formatPrice(price);
+
+            const changeElement = document.getElementById('current-change');
+            changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+            changeElement.className = 'info-value ' + (change >= 0 ? 'positive' : 'negative');
+
+            document.getElementById('current-volume').textContent = formatVolume(volume);
+            document.getElementById('current-high').textContent = formatPrice(high);
+            document.getElementById('current-low').textContent = formatPrice(low);
+        }
+
+        function updateInstrumentList(data) {
+            const price = parseFloat(data.lastPrice);
+            const change = parseFloat(data.priceChangePercent);
+
+            const priceElement = document.getElementById(`price-${currentSymbol}`);
+            const changeElement = document.getElementById(`change-${currentSymbol}`);
+
+            if (priceElement) priceElement.textContent = formatPrice(price);
+            if (changeElement) {
+                changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                changeElement.className = 'instrument-change ' + (change >= 0 ? 'positive' : 'negative');
+            }
+        }
+
+        async function loadChartData() {
+            try {
+                const response = await fetch(`${API_BASE}/fapi/v1/klines?symbol=${currentSymbol}&interval=${currentInterval}&limit=100`);
+                const data = await response.json();
+
+                const chartData = data.map(candle => ({
+                    x: candle[0],
+                    y: parseFloat(candle[4])
+                }));
+
+                priceChart.data.datasets[0].data = chartData;
+                priceChart.data.datasets[0].label = `${currentSymbol.replace('USDT', '/USDT')} (${currentInterval})`;
+                priceChart.update();
+            } catch (error) {
+                console.error('Ошибка графика:', error);
+            }
+        }
+
+        async function loadOrderBook() {
+            try {
+                const response = await fetch(`${API_BASE}/fapi/v1/depth?symbol=${currentSymbol}&limit=10`);
+                const data = await response.json();
+                displayOrderBook(data);
+            } catch (error) {
+                console.error('Ошибка стакана:', error);
+            }
+        }
+
+        function displayOrderBook(data) {
+            const asksContainer = document.getElementById('orderbook-asks');
+            const bidsContainer = document.getElementById('orderbook-bids');
+
+            asksContainer.innerHTML = data.asks.reverse().map(([price, amount]) => {
+                const total = (parseFloat(price) * parseFloat(amount)).toFixed(2);
+                return `<div class="orderbook-row ask"><span>${formatPrice(parseFloat(price))}</span><span>${parseFloat(amount).toFixed(4)}</span><span>${total}</span></div>`;
+            }).join('');
+
+            const bestAsk = parseFloat(data.asks[0][0]);
+            const bestBid = parseFloat(data.bids[0][0]);
+            const spread = ((bestAsk - bestBid) / bestBid * 100).toFixed(4);
+            document.getElementById('spread-value').textContent = `Спред: ${spread}%`;
+
+            bidsContainer.innerHTML = data.bids.map(([price, amount]) => {
+                const total = (parseFloat(price) * parseFloat(amount)).toFixed(2);
+                return `<div class="orderbook-row bid"><span>${formatPrice(parseFloat(price))}</span><span>${parseFloat(amount).toFixed(4)}</span><span>${total}</span></div>`;
+            }).join('');
+        }
+
+        async function loadRecentTrades() {
+            try {
+                const response = await fetch(`${API_BASE}/fapi/v1/trades?symbol=${currentSymbol}&limit=50`);
+                const data = await response.json();
+                displayRecentTrades(data);
+            } catch (error) {
+                console.error('Ошибка сделок:', error);
+            }
+        }
+
+        function displayRecentTrades(trades) {
+            const container = document.getElementById('trades-container');
+            container.innerHTML = trades.reverse().map(trade => {
+                const price = parseFloat(trade.price);
+                const qty = parseFloat(trade.qty);
+                const time = new Date(trade.time).toLocaleTimeString('ru-RU');
+                const isBuy = trade.isBuyerMaker === false;
+                return `<div class="trade-row ${isBuy ? 'buy' : 'sell'}"><span>${formatPrice(price)}</span><span>${qty.toFixed(4)}</span><span class="trade-time">${time}</span></div>`;
+            }).join('');
+        }
+
+        function startWebSocket() {
+            const wsUrl = `wss://fstream.binance.com/ws/${currentSymbol.toLowerCase()}@ticker`;
+            websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = function() {
+                document.getElementById('connection-status').textContent = '● Подключено';
+                document.getElementById('connection-status').className = 'status-connected';
+            };
+
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                updateTickerDisplay({
+                    lastPrice: data.c,
+                    priceChangePercent: data.P,
+                    volume: data.v,
+                    highPrice: data.h,
+                    lowPrice: data.l
+                });
+            };
+
+            websocket.onerror = function() {
+                document.getElementById('connection-status').className = 'status-disconnected';
+            };
+
+            websocket.onclose = function() {
+                document.getElementById('connection-status').textContent = '● Отключено';
+                document.getElementById('connection-status').className = 'status-disconnected';
+                setTimeout(startWebSocket, 5000);
+            };
+        }
+
+        function restartWebSocket() {
+            if (websocket) websocket.close();
+            startWebSocket();
+        }
+
+        function updateTime() {
+            document.getElementById('current-time').textContent = new Date().toLocaleString('ru-RU');
+        }
+
+        function formatPrice(price) {
+            if (price >= 1000) return price.toFixed(2);
+            if (price >= 1) return price.toFixed(4);
+            return price.toFixed(6);
+        }
+
+        function formatVolume(volume) {
+            if (volume >= 1000000) return (volume / 1000000).toFixed(2) + 'M';
+            if (volume >= 1000) return (volume / 1000).toFixed(2) + 'K';
+            return volume.toFixed(2);
+        }
+
+        setInterval(() => { loadOrderBook(); loadRecentTrades(); }, 3000);
+        setInterval(loadTicker, 5000);
+        setInterval(loadChartData, 60000);
+    </script>
+</body>
+</html>
